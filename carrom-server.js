@@ -67,16 +67,9 @@ const httpServer = http.createServer((req, res) => {
   res.end(JSON.stringify({ ok: true, rooms: rooms.size }));
 });
 
-const server = new WebSocket.Server({
-  server: httpServer,
-  verifyClient(info) {
-    const allowed = isOriginAllowed(info.origin);
-    if (!allowed) {
-      console.warn(`Rejected WebSocket origin: ${info.origin || "(none)"}`);
-    }
-    return allowed;
-  }
-});
+// Do not gate WebSocket on Origin. Browsers always send Origin; a mismatch
+// is a 401 and looks like an instant disconnect in clients.
+const server = new WebSocket.Server({ server: httpServer });
 const rooms = new Map();
 let randomWaiting = null;
 
