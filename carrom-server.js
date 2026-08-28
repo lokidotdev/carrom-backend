@@ -18,13 +18,29 @@ const WebSocket = require("ws");
 const PORT = Number(process.env.PORT) || 8080;
 const CORS_ORIGINS = String(process.env.CORS_ORIGINS || "")
   .split(",")
-  .map(origin => origin.trim())
+  .map(normalizeOrigin)
   .filter(Boolean);
+
+function normalizeOrigin(origin) {
+  const value = String(origin || "").trim();
+  if (!value) return "";
+  if (value === "*") return "*";
+  try {
+    const url = new URL(value);
+    const isDefaultPort =
+      (url.protocol === "https:" && (url.port === "" || url.port === "443")) ||
+      (url.protocol === "http:" && (url.port === "" || url.port === "80"));
+    return `${url.protocol}//${isDefaultPort ? url.hostname : url.host}`;
+  } catch {
+    return value.replace(/\/$/, "");
+  }
+}
 
 function isOriginAllowed(origin) {
   if (CORS_ORIGINS.length === 0 || CORS_ORIGINS.includes("*")) return true;
-  if (!origin) return false;
-  return CORS_ORIGINS.includes(origin);
+  // Non-browser clients (wscat, some testers, proxies) send no Origin.
+  if (!origin) return true;
+  return CORS_ORIGINS.includes(normalizeOrigin(origin));
 }
 
 function setCorsHeaders(req, res) {
@@ -54,7 +70,11 @@ const httpServer = http.createServer((req, res) => {
 const server = new WebSocket.Server({
   server: httpServer,
   verifyClient(info) {
-    return isOriginAllowed(info.origin);
+    const allowed = isOriginAllowed(info.origin);
+    if (!allowed) {
+      console.warn(`Rejected WebSocket origin: ${info.origin || "(none)"}`);
+    }
+    return allowed;
   }
 });
 const rooms = new Map();
@@ -307,8 +327,8 @@ setInterval(() => {
   }
 }, 30000);
 
-httpServer.listen(PORT, () => {
-  console.log(`Carrom Royale WebSocket server listening on ws://localhost:${PORT}`);
+httpServer.listen(PORT, "0.0.0.0", () => {
+  console.log(`Carrom Royale WebSocket server listening on ${PORT}`);
   if (CORS_ORIGINS.length === 0) {
     console.log("CORS_ORIGINS is unset; allowing all origins");
   } else {
