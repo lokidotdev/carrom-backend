@@ -1,0 +1,17 @@
+{
+  "name": "carom-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Carrom Royale WebSocket matchmaking server",
+  "main": "carrom-server.js",
+  "scripts": {
+    "start": "node carrom-server.js",
+    "dev": "node carrom-server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "ws": "^8.18.3"
+  }
+}
